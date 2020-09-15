@@ -1,9 +1,9 @@
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
-import "openzeppelin-solidity/contracts/utils/Address.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/math/SafeMath.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/utils/ReentrancyGuard.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/utils/Address.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/utils/ReentrancyGuard.sol";
 import "../libraries/openzeppelin-upgradeability/VersionedInitializable.sol";
 
 import "../configuration/LendingPoolAddressesProvider.sol";
@@ -16,11 +16,14 @@ import "./LendingPoolDataProvider.sol";
 import "../interfaces/IPriceOracleGetter.sol";
 
 /**
-* @title LendingPoolLiquidationManager contract
-* @author Aave
-* @notice Implements the liquidation function.
-**/
-contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializable {
+ * @title LendingPoolLiquidationManager contract
+ * @author Aave
+ * @notice Implements the liquidation function.
+ **/
+contract LendingPoolLiquidationManager is
+    ReentrancyGuard,
+    VersionedInitializable
+{
     using SafeMath for uint256;
     using WadRayMath for uint256;
     using Address for address;
@@ -35,14 +38,14 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
     uint256 constant LIQUIDATION_CLOSE_FACTOR_PERCENT = 50;
 
     /**
-    * @dev emitted when a borrow fee is liquidated
-    * @param _collateral the address of the collateral being liquidated
-    * @param _reserve the address of the reserve
-    * @param _user the address of the user being liquidated
-    * @param _feeLiquidated the total fee liquidated
-    * @param _liquidatedCollateralForFee the amount of collateral received by the protocol in exchange for the fee
-    * @param _timestamp the timestamp of the action
-    **/
+     * @dev emitted when a borrow fee is liquidated
+     * @param _collateral the address of the collateral being liquidated
+     * @param _reserve the address of the reserve
+     * @param _user the address of the user being liquidated
+     * @param _feeLiquidated the total fee liquidated
+     * @param _liquidatedCollateralForFee the amount of collateral received by the protocol in exchange for the fee
+     * @param _timestamp the timestamp of the action
+     **/
     event OriginationFeeLiquidated(
         address indexed _collateral,
         address indexed _reserve,
@@ -53,17 +56,17 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
     );
 
     /**
-    * @dev emitted when a borrower is liquidated
-    * @param _collateral the address of the collateral being liquidated
-    * @param _reserve the address of the reserve
-    * @param _user the address of the user being liquidated
-    * @param _purchaseAmount the total amount liquidated
-    * @param _liquidatedCollateralAmount the amount of collateral being liquidated
-    * @param _accruedBorrowInterest the amount of interest accrued by the borrower since the last action
-    * @param _liquidator the address of the liquidator
-    * @param _receiveAToken true if the liquidator wants to receive aTokens, false otherwise
-    * @param _timestamp the timestamp of the action
-    **/
+     * @dev emitted when a borrower is liquidated
+     * @param _collateral the address of the collateral being liquidated
+     * @param _reserve the address of the reserve
+     * @param _user the address of the user being liquidated
+     * @param _purchaseAmount the total amount liquidated
+     * @param _liquidatedCollateralAmount the amount of collateral being liquidated
+     * @param _accruedBorrowInterest the amount of interest accrued by the borrower since the last action
+     * @param _liquidator the address of the liquidator
+     * @param _receiveAToken true if the liquidator wants to receive aTokens, false otherwise
+     * @param _timestamp the timestamp of the action
+     **/
     event LiquidationCall(
         address indexed _collateral,
         address indexed _reserve,
@@ -105,22 +108,22 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
     }
 
     /**
-    * @dev as the contract extends the VersionedInitializable contract to match the state
-    * of the LendingPool contract, the getRevision() function is needed.
-    */
+     * @dev as the contract extends the VersionedInitializable contract to match the state
+     * of the LendingPool contract, the getRevision() function is needed.
+     */
     function getRevision() internal pure returns (uint256) {
         return 0;
     }
 
     /**
-    * @dev users can invoke this function to liquidate an undercollateralized position.
-    * @param _reserve the address of the collateral to liquidated
-    * @param _reserve the address of the principal reserve
-    * @param _user the address of the borrower
-    * @param _purchaseAmount the amount of principal that the liquidator wants to repay
-    * @param _receiveAToken true if the liquidators wants to receive the aTokens, false if
-    * he wants to receive the underlying asset directly
-    **/
+     * @dev users can invoke this function to liquidate an undercollateralized position.
+     * @param _reserve the address of the collateral to liquidated
+     * @param _reserve the address of the principal reserve
+     * @param _user the address of the borrower
+     * @param _purchaseAmount the amount of principal that the liquidator wants to repay
+     * @param _receiveAToken true if the liquidators wants to receive the aTokens, false if
+     * he wants to receive the underlying asset directly
+     **/
     function liquidationCall(
         address _collateral,
         address _reserve,
@@ -131,9 +134,8 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
         // Usage of a memory struct of vars to avoid "Stack too deep" errors due to local variables
         LiquidationCallLocalVars memory vars;
 
-        (, , , , , , , vars.healthFactorBelowThreshold) = dataProvider.calculateUserGlobalData(
-            _user
-        );
+        (, , , , , , , vars.healthFactorBelowThreshold) = dataProvider
+            .calculateUserGlobalData(_user);
 
         if (!vars.healthFactorBelowThreshold) {
             return (
@@ -142,7 +144,10 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
             );
         }
 
-        vars.userCollateralBalance = core.getUserUnderlyingAssetBalance(_collateral, _user);
+        vars.userCollateralBalance = core.getUserUnderlyingAssetBalance(
+            _collateral,
+            _user
+        );
 
         //if _user hasn't deposited this specific collateral, nothing can be liquidated
         if (vars.userCollateralBalance == 0) {
@@ -181,11 +186,15 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
             .mul(LIQUIDATION_CLOSE_FACTOR_PERCENT)
             .div(100);
 
-        vars.actualAmountToLiquidate = _purchaseAmount > vars.maxPrincipalAmountToLiquidate
+        vars.actualAmountToLiquidate = _purchaseAmount >
+            vars.maxPrincipalAmountToLiquidate
             ? vars.maxPrincipalAmountToLiquidate
             : _purchaseAmount;
 
-        (uint256 maxCollateralToLiquidate, uint256 principalAmountNeeded) = calculateAvailableCollateralToLiquidate(
+        (
+            uint256 maxCollateralToLiquidate,
+            uint256 principalAmountNeeded
+        ) = calculateAvailableCollateralToLiquidate(
             _collateral,
             _reserve,
             vars.actualAmountToLiquidate,
@@ -217,7 +226,8 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
 
         //if liquidator reclaims the underlying asset, we make sure there is enough available collateral in the reserve
         if (!_receiveAToken) {
-            uint256 currentAvailableCollateral = core.getReserveAvailableLiquidity(_collateral);
+            uint256 currentAvailableCollateral = core
+                .getReserveAvailableLiquidity(_collateral);
             if (currentAvailableCollateral < maxCollateralToLiquidate) {
                 return (
                     uint256(LiquidationErrors.NOT_ENOUGH_LIQUIDITY),
@@ -238,25 +248,42 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
             _receiveAToken
         );
 
-        AToken collateralAtoken = AToken(core.getReserveATokenAddress(_collateral));
+        AToken collateralAtoken = AToken(
+            core.getReserveATokenAddress(_collateral)
+        );
 
         //if liquidator reclaims the aToken, he receives the equivalent atoken amount
         if (_receiveAToken) {
-            collateralAtoken.transferOnLiquidation(_user, msg.sender, maxCollateralToLiquidate);
+            collateralAtoken.transferOnLiquidation(
+                _user,
+                msg.sender,
+                maxCollateralToLiquidate
+            );
         } else {
             //otherwise receives the underlying asset
             //burn the equivalent amount of atoken
             collateralAtoken.burnOnLiquidation(_user, maxCollateralToLiquidate);
-            core.transferToUser(_collateral, msg.sender, maxCollateralToLiquidate);
+            core.transferToUser(
+                _collateral,
+                msg.sender,
+                maxCollateralToLiquidate
+            );
         }
 
         //transfers the principal currency to the pool
-        core.transferToReserve.value(msg.value)(_reserve, msg.sender, vars.actualAmountToLiquidate);
+        core.transferToReserve.value(msg.value)(
+            _reserve,
+            msg.sender,
+            vars.actualAmountToLiquidate
+        );
 
         if (vars.feeLiquidated > 0) {
             //if there is enough collateral to liquidate the fee, first transfer burn an equivalent amount of
             //aTokens of the user
-            collateralAtoken.burnOnLiquidation(_user, vars.liquidatedCollateralForFee);
+            collateralAtoken.burnOnLiquidation(
+                _user,
+                vars.liquidatedCollateralForFee
+            );
 
             //then liquidate the fee by transferring it to the fee collection address
             core.liquidateFee(
@@ -274,7 +301,6 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
                 //solium-disable-next-line
                 block.timestamp
             );
-
         }
         emit LiquidationCall(
             _collateral,
@@ -301,25 +327,31 @@ contract LendingPoolLiquidationManager is ReentrancyGuard, VersionedInitializabl
     }
 
     /**
-    * @dev calculates how much of a specific collateral can be liquidated, given
-    * a certain amount of principal currency. This function needs to be called after
-    * all the checks to validate the liquidation have been performed, otherwise it might fail.
-    * @param _collateral the collateral to be liquidated
-    * @param _principal the principal currency to be liquidated
-    * @param _purchaseAmount the amount of principal being liquidated
-    * @param _userCollateralBalance the collatera balance for the specific _collateral asset of the user being liquidated
-    * @return the maximum amount that is possible to liquidated given all the liquidation constraints (user balance, close factor) and
-    * the purchase amount
-    **/
+     * @dev calculates how much of a specific collateral can be liquidated, given
+     * a certain amount of principal currency. This function needs to be called after
+     * all the checks to validate the liquidation have been performed, otherwise it might fail.
+     * @param _collateral the collateral to be liquidated
+     * @param _principal the principal currency to be liquidated
+     * @param _purchaseAmount the amount of principal being liquidated
+     * @param _userCollateralBalance the collatera balance for the specific _collateral asset of the user being liquidated
+     * @return the maximum amount that is possible to liquidated given all the liquidation constraints (user balance, close factor) and
+     * the purchase amount
+     **/
     function calculateAvailableCollateralToLiquidate(
         address _collateral,
         address _principal,
         uint256 _purchaseAmount,
         uint256 _userCollateralBalance
-    ) internal view returns (uint256 collateralAmount, uint256 principalAmountNeeded) {
+    )
+        internal
+        view
+        returns (uint256 collateralAmount, uint256 principalAmountNeeded)
+    {
         collateralAmount = 0;
         principalAmountNeeded = 0;
-        IPriceOracleGetter oracle = IPriceOracleGetter(addressesProvider.getPriceOracle());
+        IPriceOracleGetter oracle = IPriceOracleGetter(
+            addressesProvider.getPriceOracle()
+        );
 
         // Usage of a memory struct of vars to avoid "Stack too deep" errors due to local variables
         AvailableCollateralToLiquidateLocalVars memory vars;

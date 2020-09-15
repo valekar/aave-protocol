@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/ownership/Ownable.sol";
 
 import "../interfaces/IPriceOracleGetter.sol";
 import "../interfaces/IChainlinkAggregator.sol";
@@ -14,7 +14,6 @@ import "../libraries/EthAddressLib.sol";
 /// - Owned by the Aave governance system, allowed to add sources for assets, replace them
 ///   and change the fallbackOracle
 contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
-
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event FallbackOracleUpdated(address indexed fallbackOracle);
 
@@ -26,7 +25,11 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
     /// @param _sources The address of the source of each asset
     /// @param _fallbackOracle The address of the fallback oracle to use if the data of an
     ///        aggregator is not consistent
-    constructor(address[] memory _assets, address[] memory _sources, address _fallbackOracle) public {
+    constructor(
+        address[] memory _assets,
+        address[] memory _sources,
+        address _fallbackOracle
+    ) public {
         internalSetFallbackOracle(_fallbackOracle);
         internalSetAssetsSources(_assets, _sources);
     }
@@ -34,7 +37,10 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
     /// @notice External function called by the Aave governance to set or replace sources of assets
     /// @param _assets The addresses of the assets
     /// @param _sources The address of the source of each asset
-    function setAssetSources(address[] calldata _assets, address[] calldata _sources) external onlyOwner {
+    function setAssetSources(
+        address[] calldata _assets,
+        address[] calldata _sources
+    ) external onlyOwner {
         internalSetAssetsSources(_assets, _sources);
     }
 
@@ -48,8 +54,14 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
     /// @notice Internal function to set the sources for each asset
     /// @param _assets The addresses of the assets
     /// @param _sources The address of the source of each asset
-    function internalSetAssetsSources(address[] memory _assets, address[] memory _sources) internal {
-        require(_assets.length == _sources.length, "INCONSISTENT_PARAMS_LENGTH");
+    function internalSetAssetsSources(
+        address[] memory _assets,
+        address[] memory _sources
+    ) internal {
+        require(
+            _assets.length == _sources.length,
+            "INCONSISTENT_PARAMS_LENGTH"
+        );
         for (uint256 i = 0; i < _assets.length; i++) {
             assetsSources[_assets[i]] = IChainlinkAggregator(_sources[i]);
             emit AssetSourceUpdated(_assets[i], _sources[i]);
@@ -65,7 +77,7 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
 
     /// @notice Gets an asset price by address
     /// @param _asset The asset address
-    function getAssetPrice(address _asset) public view returns(uint256) {
+    function getAssetPrice(address _asset) public view returns (uint256) {
         IChainlinkAggregator source = assetsSources[_asset];
         if (_asset == EthAddressLib.ethAddress()) {
             return 1 ether;
@@ -78,7 +90,10 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
                 if (_price > 0) {
                     return uint256(_price);
                 } else {
-                    return IPriceOracleGetter(fallbackOracle).getAssetPrice(_asset);
+                    return
+                        IPriceOracleGetter(fallbackOracle).getAssetPrice(
+                            _asset
+                        );
                 }
             }
         }
@@ -86,7 +101,11 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
 
     /// @notice Gets a list of prices from a list of assets addresses
     /// @param _assets The list of assets addresses
-    function getAssetsPrices(address[] calldata _assets) external view returns(uint256[] memory) {
+    function getAssetsPrices(address[] calldata _assets)
+        external
+        view
+        returns (uint256[] memory)
+    {
         uint256[] memory prices = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
             prices[i] = getAssetPrice(_assets[i]);
@@ -97,13 +116,13 @@ contract ChainlinkProxyPriceProvider is IPriceOracleGetter, Ownable {
     /// @notice Gets the address of the source for an asset address
     /// @param _asset The address of the asset
     /// @return address The address of the source
-    function getSourceOfAsset(address _asset) external view returns(address) {
+    function getSourceOfAsset(address _asset) external view returns (address) {
         return address(assetsSources[_asset]);
     }
 
     /// @notice Gets the address of the fallback oracle
     /// @return address The addres of the fallback oracle
-    function getFallbackOracle() external view returns(address) {
+    function getFallbackOracle() external view returns (address) {
         return address(fallbackOracle);
     }
 }

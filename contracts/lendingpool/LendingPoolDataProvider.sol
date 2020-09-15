@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.4.0/contracts/math/SafeMath.sol";
 import "../libraries/openzeppelin-upgradeability/VersionedInitializable.sol";
 
 import "../libraries/CoreLibrary.sol";
@@ -13,11 +13,11 @@ import "../tokenization/AToken.sol";
 import "./LendingPoolCore.sol";
 
 /**
-* @title LendingPoolDataProvider contract
-* @author Aave
-* @notice Implements functions to fetch data from the core, and aggregate them in order to allow computation
-* on the compounded balances and the account balances in ETH
-**/
+ * @title LendingPoolDataProvider contract
+ * @author Aave
+ * @notice Implements functions to fetch data from the core, and aggregate them in order to allow computation
+ * on the compounded balances and the account balances in ETH
+ **/
 contract LendingPoolDataProvider is VersionedInitializable {
     using SafeMath for uint256;
     using WadRayMath for uint256;
@@ -26,9 +26,9 @@ contract LendingPoolDataProvider is VersionedInitializable {
     LendingPoolAddressesProvider public addressesProvider;
 
     /**
-    * @dev specifies the health factor threshold at which the user position is liquidated.
-    * 1e18 by default, if the health factor drops below 1e18, the loan can be liquidated.
-    **/
+     * @dev specifies the health factor threshold at which the user position is liquidated.
+     * 1e18 by default, if the health factor drops below 1e18, the loan can be liquidated.
+     **/
     uint256 public constant HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1e18;
 
     uint256 public constant DATA_PROVIDER_REVISION = 0x1;
@@ -37,14 +37,17 @@ contract LendingPoolDataProvider is VersionedInitializable {
         return DATA_PROVIDER_REVISION;
     }
 
-    function initialize(LendingPoolAddressesProvider _addressesProvider) public initializer {
+    function initialize(LendingPoolAddressesProvider _addressesProvider)
+        public
+        initializer
+    {
         addressesProvider = _addressesProvider;
         core = LendingPoolCore(_addressesProvider.getLendingPoolCore());
     }
 
     /**
-    * @dev struct to hold calculateUserGlobalData() local computations
-    **/
+     * @dev struct to hold calculateUserGlobalData() local computations
+     **/
     struct UserGlobalDataLocalVars {
         uint256 reserveUnitPrice;
         uint256 tokenUnit;
@@ -60,13 +63,13 @@ contract LendingPoolDataProvider is VersionedInitializable {
     }
 
     /**
-    * @dev calculates the user data across the reserves.
-    * this includes the total liquidity/collateral/borrow balances in ETH,
-    * the average Loan To Value, the average Liquidation Ratio, and the Health factor.
-    * @param _user the address of the user
-    * @return the total liquidity, total collateral, total borrow balances of the user in ETH.
-    * also the average Ltv, liquidation threshold, and the health factor
-    **/
+     * @dev calculates the user data across the reserves.
+     * this includes the total liquidity/collateral/borrow balances in ETH,
+     * the average Loan To Value, the average Liquidation Ratio, and the Health factor.
+     * @param _user the address of the user
+     * @return the total liquidity, total collateral, total borrow balances of the user in ETH.
+     * also the average Ltv, liquidation threshold, and the health factor
+     **/
     function calculateUserGlobalData(address _user)
         public
         view
@@ -81,7 +84,9 @@ contract LendingPoolDataProvider is VersionedInitializable {
             bool healthFactorBelowThreshold
         )
     {
-        IPriceOracleGetter oracle = IPriceOracleGetter(addressesProvider.getPriceOracle());
+        IPriceOracleGetter oracle = IPriceOracleGetter(
+            addressesProvider.getPriceOracle()
+        );
 
         // Usage of a memory struct of vars to avoid "Stack too deep" errors due to local variables
         UserGlobalDataLocalVars memory vars;
@@ -98,7 +103,10 @@ contract LendingPoolDataProvider is VersionedInitializable {
                 vars.userUsesReserveAsCollateral
             ) = core.getUserBasicReserveData(vars.currentReserve, _user);
 
-            if (vars.compoundedLiquidityBalance == 0 && vars.compoundedBorrowBalance == 0) {
+            if (
+                vars.compoundedLiquidityBalance == 0 &&
+                vars.compoundedBorrowBalance == 0
+            ) {
                 continue;
             }
 
@@ -110,7 +118,7 @@ contract LendingPoolDataProvider is VersionedInitializable {
                 vars.usageAsCollateralEnabled
             ) = core.getReserveConfiguration(vars.currentReserve);
 
-            vars.tokenUnit = 10 ** vars.reserveDecimals;
+            vars.tokenUnit = 10**vars.reserveDecimals;
             vars.reserveUnitPrice = oracle.getAssetPrice(vars.currentReserve);
 
             //liquidity and collateral balance
@@ -119,12 +127,22 @@ contract LendingPoolDataProvider is VersionedInitializable {
                     .reserveUnitPrice
                     .mul(vars.compoundedLiquidityBalance)
                     .div(vars.tokenUnit);
-                totalLiquidityBalanceETH = totalLiquidityBalanceETH.add(liquidityBalanceETH);
+                totalLiquidityBalanceETH = totalLiquidityBalanceETH.add(
+                    liquidityBalanceETH
+                );
 
-                if (vars.usageAsCollateralEnabled && vars.userUsesReserveAsCollateral) {
-                    totalCollateralBalanceETH = totalCollateralBalanceETH.add(liquidityBalanceETH);
-                    currentLtv = currentLtv.add(liquidityBalanceETH.mul(vars.baseLtv));
-                    currentLiquidationThreshold = currentLiquidationThreshold.add(
+                if (
+                    vars.usageAsCollateralEnabled &&
+                    vars.userUsesReserveAsCollateral
+                ) {
+                    totalCollateralBalanceETH = totalCollateralBalanceETH.add(
+                        liquidityBalanceETH
+                    );
+                    currentLtv = currentLtv.add(
+                        liquidityBalanceETH.mul(vars.baseLtv)
+                    );
+                    currentLiquidationThreshold = currentLiquidationThreshold
+                        .add(
                         liquidityBalanceETH.mul(vars.liquidationThreshold)
                     );
                 }
@@ -132,15 +150,21 @@ contract LendingPoolDataProvider is VersionedInitializable {
 
             if (vars.compoundedBorrowBalance > 0) {
                 totalBorrowBalanceETH = totalBorrowBalanceETH.add(
-                    vars.reserveUnitPrice.mul(vars.compoundedBorrowBalance).div(vars.tokenUnit)
+                    vars.reserveUnitPrice.mul(vars.compoundedBorrowBalance).div(
+                        vars.tokenUnit
+                    )
                 );
                 totalFeesETH = totalFeesETH.add(
-                    vars.originationFee.mul(vars.reserveUnitPrice).div(vars.tokenUnit)
+                    vars.originationFee.mul(vars.reserveUnitPrice).div(
+                        vars.tokenUnit
+                    )
                 );
             }
         }
 
-        currentLtv = totalCollateralBalanceETH > 0 ? currentLtv.div(totalCollateralBalanceETH) : 0;
+        currentLtv = totalCollateralBalanceETH > 0
+            ? currentLtv.div(totalCollateralBalanceETH)
+            : 0;
         currentLiquidationThreshold = totalCollateralBalanceETH > 0
             ? currentLiquidationThreshold.div(totalCollateralBalanceETH)
             : 0;
@@ -151,8 +175,8 @@ contract LendingPoolDataProvider is VersionedInitializable {
             totalFeesETH,
             currentLiquidationThreshold
         );
-        healthFactorBelowThreshold = healthFactor < HEALTH_FACTOR_LIQUIDATION_THRESHOLD;
-
+        healthFactorBelowThreshold =
+            healthFactor < HEALTH_FACTOR_LIQUIDATION_THRESHOLD;
     }
 
     struct balanceDecreaseAllowedLocalVars {
@@ -170,18 +194,18 @@ contract LendingPoolDataProvider is VersionedInitializable {
     }
 
     /**
-    * @dev check if a specific balance decrease is allowed (i.e. doesn't bring the user borrow position health factor under 1e18)
-    * @param _reserve the address of the reserve
-    * @param _user the address of the user
-    * @param _amount the amount to decrease
-    * @return true if the decrease of the balance is allowed
-    **/
+     * @dev check if a specific balance decrease is allowed (i.e. doesn't bring the user borrow position health factor under 1e18)
+     * @param _reserve the address of the reserve
+     * @param _user the address of the user
+     * @param _amount the amount to decrease
+     * @return true if the decrease of the balance is allowed
+     **/
 
-    function balanceDecreaseAllowed(address _reserve, address _user, uint256 _amount)
-        external
-        view
-        returns (bool)
-    {
+    function balanceDecreaseAllowed(
+        address _reserve,
+        address _user,
+        uint256 _amount
+    ) external view returns (bool) {
         // Usage of a memory struct of vars to avoid "Stack too deep" errors due to local variables
         balanceDecreaseAllowedLocalVars memory vars;
 
@@ -214,11 +238,14 @@ contract LendingPoolDataProvider is VersionedInitializable {
             return true; //no borrows - no reasons to block the transfer
         }
 
-        IPriceOracleGetter oracle = IPriceOracleGetter(addressesProvider.getPriceOracle());
-
-        vars.amountToDecreaseETH = oracle.getAssetPrice(_reserve).mul(_amount).div(
-            10 ** vars.decimals
+        IPriceOracleGetter oracle = IPriceOracleGetter(
+            addressesProvider.getPriceOracle()
         );
+
+        vars.amountToDecreaseETH = oracle
+            .getAssetPrice(_reserve)
+            .mul(_amount)
+            .div(10**vars.decimals);
 
         vars.collateralBalancefterDecrease = vars.collateralBalanceETH.sub(
             vars.amountToDecreaseETH
@@ -235,7 +262,9 @@ contract LendingPoolDataProvider is VersionedInitializable {
             .sub(vars.amountToDecreaseETH.mul(vars.reserveLiquidationThreshold))
             .div(vars.collateralBalancefterDecrease);
 
-        uint256 healthFactorAfterDecrease = calculateHealthFactorFromBalancesInternal(
+
+            uint256 healthFactorAfterDecrease
+         = calculateHealthFactorFromBalancesInternal(
             vars.collateralBalancefterDecrease,
             vars.borrowBalanceETH,
             vars.totalFeesETH,
@@ -243,18 +272,17 @@ contract LendingPoolDataProvider is VersionedInitializable {
         );
 
         return healthFactorAfterDecrease > HEALTH_FACTOR_LIQUIDATION_THRESHOLD;
-
     }
 
     /**
-   * @notice calculates the amount of collateral needed in ETH to cover a new borrow.
-   * @param _reserve the reserve from which the user wants to borrow
-   * @param _amount the amount the user wants to borrow
-   * @param _fee the fee for the amount that the user needs to cover
-   * @param _userCurrentBorrowBalanceTH the current borrow balance of the user (before the borrow)
-   * @param _userCurrentLtv the average ltv of the user given his current collateral
-   * @return the total amount of collateral in ETH to cover the current borrow balance + the new amount + fee
-   **/
+     * @notice calculates the amount of collateral needed in ETH to cover a new borrow.
+     * @param _reserve the reserve from which the user wants to borrow
+     * @param _amount the amount the user wants to borrow
+     * @param _fee the fee for the amount that the user needs to cover
+     * @param _userCurrentBorrowBalanceTH the current borrow balance of the user (before the borrow)
+     * @param _userCurrentLtv the average ltv of the user given his current collateral
+     * @return the total amount of collateral in ETH to cover the current borrow balance + the new amount + fee
+     **/
     function calculateCollateralNeededInETH(
         address _reserve,
         uint256 _amount,
@@ -265,12 +293,14 @@ contract LendingPoolDataProvider is VersionedInitializable {
     ) external view returns (uint256) {
         uint256 reserveDecimals = core.getReserveDecimals(_reserve);
 
-        IPriceOracleGetter oracle = IPriceOracleGetter(addressesProvider.getPriceOracle());
+        IPriceOracleGetter oracle = IPriceOracleGetter(
+            addressesProvider.getPriceOracle()
+        );
 
         uint256 requestedBorrowAmountETH = oracle
             .getAssetPrice(_reserve)
             .mul(_amount.add(_fee))
-            .div(10 ** reserveDecimals); //price is in ether
+            .div(10**reserveDecimals); //price is in ether
 
         //add the current already borrowed amount to the amount requested to calculate the total collateral needed.
         uint256 collateralNeededInETH = _userCurrentBorrowBalanceTH
@@ -280,18 +310,17 @@ contract LendingPoolDataProvider is VersionedInitializable {
             .div(_userCurrentLtv); //LTV is calculated in percentage
 
         return collateralNeededInETH;
-
     }
 
     /**
-    * @dev calculates the equivalent amount in ETH that an user can borrow, depending on the available collateral and the
-    * average Loan To Value.
-    * @param collateralBalanceETH the total collateral balance
-    * @param borrowBalanceETH the total borrow balance
-    * @param totalFeesETH the total fees
-    * @param ltv the average loan to value
-    * @return the amount available to borrow in ETH for the user
-    **/
+     * @dev calculates the equivalent amount in ETH that an user can borrow, depending on the available collateral and the
+     * average Loan To Value.
+     * @param collateralBalanceETH the total collateral balance
+     * @param borrowBalanceETH the total borrow balance
+     * @param totalFeesETH the total fees
+     * @param ltv the average loan to value
+     * @return the amount available to borrow in ETH for the user
+     **/
 
     function calculateAvailableBorrowsETHInternal(
         uint256 collateralBalanceETH,
@@ -305,7 +334,9 @@ contract LendingPoolDataProvider is VersionedInitializable {
             return 0;
         }
 
-        availableBorrowsETH = availableBorrowsETH.sub(borrowBalanceETH.add(totalFeesETH));
+        availableBorrowsETH = availableBorrowsETH.sub(
+            borrowBalanceETH.add(totalFeesETH)
+        );
         //calculate fee
         uint256 borrowFee = IFeeProvider(addressesProvider.getFeeProvider())
             .calculateLoanOriginationFee(msg.sender, availableBorrowsETH);
@@ -313,12 +344,12 @@ contract LendingPoolDataProvider is VersionedInitializable {
     }
 
     /**
-    * @dev calculates the health factor from the corresponding balances
-    * @param collateralBalanceETH the total collateral balance in ETH
-    * @param borrowBalanceETH the total borrow balance in ETH
-    * @param totalFeesETH the total fees in ETH
-    * @param liquidationThreshold the avg liquidation threshold
-    **/
+     * @dev calculates the health factor from the corresponding balances
+     * @param collateralBalanceETH the total collateral balance in ETH
+     * @param borrowBalanceETH the total borrow balance in ETH
+     * @param totalFeesETH the total fees in ETH
+     * @param liquidationThreshold the avg liquidation threshold
+     **/
     function calculateHealthFactorFromBalancesInternal(
         uint256 collateralBalanceETH,
         uint256 borrowBalanceETH,
@@ -334,15 +365,19 @@ contract LendingPoolDataProvider is VersionedInitializable {
     }
 
     /**
-    * @dev returns the health factor liquidation threshold
-    **/
-    function getHealthFactorLiquidationThreshold() public pure returns (uint256) {
+     * @dev returns the health factor liquidation threshold
+     **/
+    function getHealthFactorLiquidationThreshold()
+        public
+        pure
+        returns (uint256)
+    {
         return HEALTH_FACTOR_LIQUIDATION_THRESHOLD;
     }
 
     /**
-    * @dev accessory functions to fetch data from the lendingPoolCore
-    **/
+     * @dev accessory functions to fetch data from the lendingPoolCore
+     **/
     function getReserveConfigurationData(address _reserve)
         external
         view
@@ -357,15 +392,18 @@ contract LendingPoolDataProvider is VersionedInitializable {
             bool isActive
         )
     {
-        (, ltv, liquidationThreshold, usageAsCollateralEnabled) = core.getReserveConfiguration(
+        (, ltv, liquidationThreshold, usageAsCollateralEnabled) = core
+            .getReserveConfiguration(_reserve);
+        stableBorrowRateEnabled = core.getReserveIsStableBorrowRateEnabled(
             _reserve
         );
-        stableBorrowRateEnabled = core.getReserveIsStableBorrowRateEnabled(_reserve);
         borrowingEnabled = core.isReserveBorrowingEnabled(_reserve);
         isActive = core.getReserveIsActive(_reserve);
         liquidationBonus = core.getReserveLiquidationBonus(_reserve);
 
-        rateStrategyAddress = core.getReserveInterestRateStrategyAddress(_reserve);
+        rateStrategyAddress = core.getReserveInterestRateStrategyAddress(
+            _reserve
+        );
     }
 
     function getReserveData(address _reserve)
@@ -394,10 +432,14 @@ contract LendingPoolDataProvider is VersionedInitializable {
         liquidityRate = core.getReserveCurrentLiquidityRate(_reserve);
         variableBorrowRate = core.getReserveCurrentVariableBorrowRate(_reserve);
         stableBorrowRate = core.getReserveCurrentStableBorrowRate(_reserve);
-        averageStableBorrowRate = core.getReserveCurrentAverageStableBorrowRate(_reserve);
+        averageStableBorrowRate = core.getReserveCurrentAverageStableBorrowRate(
+            _reserve
+        );
         utilizationRate = core.getReserveUtilizationRate(_reserve);
         liquidityIndex = core.getReserveLiquidityCumulativeIndex(_reserve);
-        variableBorrowIndex = core.getReserveVariableBorrowsCumulativeIndex(_reserve);
+        variableBorrowIndex = core.getReserveVariableBorrowsCumulativeIndex(
+            _reserve
+        );
         aTokenAddress = core.getReserveATokenAddress(_reserve);
         lastUpdateTimestamp = core.getReserveLastUpdate(_reserve);
     }
@@ -451,12 +493,14 @@ contract LendingPoolDataProvider is VersionedInitializable {
             bool usageAsCollateralEnabled
         )
     {
-        currentATokenBalance = AToken(core.getReserveATokenAddress(_reserve)).balanceOf(_user);
-        CoreLibrary.InterestRateMode mode = core.getUserCurrentBorrowRateMode(_reserve, _user);
-        (principalBorrowBalance, currentBorrowBalance, ) = core.getUserBorrowBalances(
+        currentATokenBalance = AToken(core.getReserveATokenAddress(_reserve))
+            .balanceOf(_user);
+        CoreLibrary.InterestRateMode mode = core.getUserCurrentBorrowRateMode(
             _reserve,
             _user
         );
+        (principalBorrowBalance, currentBorrowBalance, ) = core
+            .getUserBorrowBalances(_reserve, _user);
 
         //default is 0, if mode == CoreLibrary.InterestRateMode.NONE
         if (mode == CoreLibrary.InterestRateMode.STABLE) {
@@ -468,8 +512,14 @@ contract LendingPoolDataProvider is VersionedInitializable {
         borrowRateMode = uint256(mode);
         liquidityRate = core.getReserveCurrentLiquidityRate(_reserve);
         originationFee = core.getUserOriginationFee(_reserve, _user);
-        variableBorrowIndex = core.getUserVariableBorrowCumulativeIndex(_reserve, _user);
+        variableBorrowIndex = core.getUserVariableBorrowCumulativeIndex(
+            _reserve,
+            _user
+        );
         lastUpdateTimestamp = core.getUserLastUpdate(_reserve, _user);
-        usageAsCollateralEnabled = core.isUserUseReserveAsCollateralEnabled(_reserve, _user);
+        usageAsCollateralEnabled = core.isUserUseReserveAsCollateralEnabled(
+            _reserve,
+            _user
+        );
     }
 }
